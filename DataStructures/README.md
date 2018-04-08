@@ -1,10 +1,10 @@
-Data Structures in the Linux Kernel
+Linuxカーネルのデータ構造
 ========================================================================
 
-Linux kernel provides different implementations of data structures like doubly linked list, B+ tree, priority heap and many many more.
+Linuxカーネルは双方向連結リスト、B+木、優先度付きヒープなどの、異なるデータ構造の実装を提供している。
 
-This part considers the following data structures and algorithms:
+このパートでは以下のようにデータ構造とアルゴリズムについて説明する。
 
-  * [Doubly linked list](linux-datastructures-1.md)
-  * [Radix tree](linux-datastructures-2.md)
-  * [Bit arrays](linux-datastructures-3.md)
+  * [双方向連結リスト](linux-datastructures-1.md)
+  * [基数木](linux-datastructures-2.md)
+  * [ビット配列](linux-datastructures-3.md)
