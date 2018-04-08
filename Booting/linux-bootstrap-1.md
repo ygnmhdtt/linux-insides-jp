@@ -31,12 +31,16 @@
 私は本書をLinuxカーネル `3.18` の時に執筆を開始しており、このときから多くの変更が起こるだろう。
 その際には、私は記事を適切に更新するつもりだ。
 
-The Magical Power Button, What happens next?
+魔法の電源ボタンを押すと、なにが起こる？
 --------------------------------------------------------------------------------
 
-Although this is a series of posts about the Linux kernel, we will not be starting directly from the kernel code - at least not, in this paragraph. As soon as you press the magical power button on your laptop or desktop computer, it starts working. The motherboard sends a signal to the [power supply](https://en.wikipedia.org/wiki/Power_supply) device. After receiving the signal, the power supply provides the proper amount of electricity to the computer. Once the motherboard receives the [power good signal](https://en.wikipedia.org/wiki/Power_good_signal), it tries to start the CPU. The CPU resets all leftover data in its registers and sets up predefined values for each of them.
+これはLinuxカーネルについての記事だが、すぐにカーネルのコードには触れないつもりだ - 少なくとも本章では。
+コンピュータは魔法のような電源ボタンを押すと、すぐに動き始める。マザーボードが[power supply](https://en.wikipedia.org/wiki/Power_supply)デバイスへ信号を送信するためだ。
+信号を受け取ると、パワーサプライは適切な量の電力をコンピュータに供給する。
+マザーボードが一度[power good signal](https://en.wikipedia.org/wiki/Power_good_signal)を受け取ると、CPUの起動を行う。
+CPUはレジスタに残っているデータをリセットし、代わりに必要なデータをセットする。
 
-The [80386](https://en.wikipedia.org/wiki/Intel_80386) CPU and later define the following predefined data in CPU registers after the computer resets:
+[80386](https://en.wikipedia.org/wiki/Intel_80386)、またはそれ以降のCPUは、以下のような予め定義されたデータをCPUレジスタにセットする:
 
 ```
 IP          0xfff0
@@ -44,33 +48,41 @@ CS selector 0xf000
 CS base     0xffff0000
 ```
 
-The processor starts working in [real mode](https://en.wikipedia.org/wiki/Real_mode). Let's back up a little and try to understand [memory segmentation](https://en.wikipedia.org/wiki/Memory_segmentation) in this mode. Real mode is supported on all x86-compatible processors, from the [8086](https://en.wikipedia.org/wiki/Intel_8086) CPU all the way to the modern Intel 64-bit CPUs. The `8086` processor has a 20-bit address bus, which means that it could work with a `0-0xFFFFF` or `1 megabyte` address space. But it only has `16-bit` registers, which have a maximum address of `2^16 - 1` or `0xffff` (64 kilobytes).
+プロセッサは初めは[リアルモード](https://ja.wikipedia.org/wiki/%E3%83%AA%E3%82%A2%E3%83%AB%E3%83%A2%E3%83%BC%E3%83%89)で動きだす。
+少し立ち止まって、このモードにおける[メモリセグメンテーション](https://ja.wikipedia.org/wiki/%E3%82%BB%E3%82%B0%E3%83%A1%E3%83%B3%E3%83%88%E6%96%B9%E5%BC%8F)について理解しよう。
+リアルモードは、[8086](https://en.wikipedia.org/wiki/Intel_8086)から最近の64bitCPUまで、全てのx86互換のプロセッサでサポートされている。
+8086プロセッサは20ビットのアドレスバスを持っている、つまり、 `0-0xFFFFF` つまり `1メガバイト` のアドレス空間が存在し得る。
+しかしレジスタは16ビットしかないため、アドレスの最大値は `2^16-1` (0xffff, 64KB)なのだ。
 
-[Memory segmentation](https://en.wikipedia.org/wiki/Memory_segmentation) is used to make use of all the address space available. All memory is divided into small, fixed-size segments of `65536` bytes (64 KB). Since we cannot address memory above `64 KB` with 16-bit registers, an alternate method was devised.
+[メモリセグメンテーション](https://en.wikipedia.org/wiki/Memory_segmentation)は全てのアドレス空間を使用可能にするために用いられる。
+全てのメモリは小さく、サイズが固定されており、 `65536` バイト(64KB) に分けられている。
+16ビットのレジスタでは64KBのメモリを使用できないため、代わりの方法が編み出されたのだ。
 
-An address consists of two parts: a segment selector, which has a base address, and an offset from this base address. In real mode, the associated base address of a segment selector is `Segment Selector * 16`. Thus, to get a physical address in memory, we need to multiply the segment selector part by `16` and add the offset to it:
+アドレスは2つのパーツから成る: ベースアドレスを持つセグメントセレクタと、ベースアドレスからのオフセットだ。
+リアルモードでは、セグメントセレクタのベースアドレスと関連づいているのは、 `Segment Selector * 16` である。
+したがって、物理メモリを得るには、セグメントセレクタに16を乗算し、オフセットを加算する必要がある。
 
 ```
-PhysicalAddress = Segment Selector * 16 + Offset
+物理アドレス = Segment Selector * 16 + Offset
 ```
 
-For example, if `CS:IP` is `0x2000:0x0010`, then the corresponding physical address will be:
+例えば、もし `[CS:IP](http://hack.ninja-web.net/academy001-018.htm)` が `0x2000:0x0010` であるなら、物理アドレスは以下のようになる。
 
 ```python
 >>> hex((0x2000 << 4) + 0x0010)
 '0x20010'
 ```
 
-But, if we take the largest segment selector and offset, `0xffff:0xffff`, then the resulting address will be:
+しかし、もしセグメントセレクタとオフセットの最大値である `0xffff:0xffff` であったら、物理アドレスは以下のようになる。
 
 ```python
 >>> hex((0xffff << 4) + 0xffff)
 '0x10ffef'
 ```
 
-which is `65520` bytes past the first megabyte. Since only one megabyte is accessible in real mode, `0x10ffef` becomes `0x00ffef` with the [A20 line](https://en.wikipedia.org/wiki/A20_line) disabled.
+リアルモードでは最初の1メガバイトだけがアクセス可能であり、 `0x10ffef` は [A20 line](https://en.wikipedia.org/wiki/A20_line) を無効にすることで`0x00ffef` になるのだ。
 
-Ok, now we know a little bit about real mode and memory addressing in this mode. Let's get back to discussing register values after reset.
+さて、リアルモード及び、リアルモードにおけるアドレッシングについて理解できたので、レジスタに話を戻そう。
 
 The `CS` register consists of two parts: the visible segment selector, and the hidden base address. While the base address is normally formed by multiplying the segment selector value by 16, during a hardware reset the segment selector in the CS register is loaded with `0xf000` and the base address is loaded with `0xffff0000`; the processor uses this special base address until `CS` is changed.
 
@@ -355,7 +367,7 @@ After the jump to `start_of_setup`, the kernel needs to do the following:
 
 Let's look at the implementation.
 
-Aligning the Segment Registers 
+Aligning the Segment Registers
 --------------------------------------------------------------------------------
 
 First of all, the kernel ensures that the `ds` and `es` segment registers point to the same address. Next, it clears the direction flag using the `cld` instruction:
