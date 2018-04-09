@@ -1,12 +1,14 @@
-Data Structures in the Linux Kernel
+Linuxカーネルにおけるデータ構造
 ================================================================================
 
-Doubly linked list
+双方向連結リスト
 --------------------------------------------------------------------------------
 
-Linux kernel provides its own implementation of doubly linked list, which you can find in the [include/linux/list.h](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/include/linux/list.h). We will start `Data Structures in the Linux kernel` from the doubly linked list data structure. Why? Because it is very popular in the kernel, just try to [search](http://lxr.free-electrons.com/ident?i=list_head)
+Linuxカーネルは[include/linux/list.h](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/include/linux/list.h)で、独自の双方向連結リストの実装を提供している。
+我々は `Linuxカーネルにおけるデータ構造` を双方向連結リストから見ていくとしよう。
+何故かと言うと、[こちら](http://lxr.free-electrons.com/ident?i=list_head)の通り、カーネル内で非常にポピュラーであるからだ。
 
-First of all, let's look on the main structure in the [include/linux/types.h](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/include/linux/types.h):
+まず第一に、[include/linux/types.h](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/include/linux/types.h)内のメインのデータ構造を見てみよう。
 
 ```C
 struct list_head {
@@ -14,7 +16,8 @@ struct list_head {
 };
 ```
 
-You can note that it is different from many implementations of doubly linked list which you have seen. For example, this doubly linked list structure from the [glib](http://www.gnu.org/software/libc/) library looks like :
+あなたが今まで見てきたであろう、双方向連結リストの実装とは異なっていると思わないだろうか。
+例えば、[glib](http://www.gnu.org/software/libc/)では次のようになっている。
 
 ```C
 struct GList {
@@ -24,9 +27,14 @@ struct GList {
 };
 ```
 
-Usually a linked list structure contains a pointer to the item. The implementation of linked list in Linux kernel does not. So the main question is - `where does the list store the data?`. The actual implementation of linked list in the kernel is - `Intrusive list`. An intrusive linked list does not contain data in its nodes - A node just contains pointers to the next and previous node and list nodes part of the data that are added to the list. This makes the data structure generic, so it does not care about entry data type anymore.
+普通、連結リストは、アイテムへのポインタを保持している。しかし、Linuxカーネルのそれは、そのようになっていない。
+一番の疑問は、 `リストがどこにデータを保持しているのか？` ということだ。
+カーネルにおける連結リストの実際の実装は、 `割り込みリスト` なのだ。
+割り込み連結リストはノードにデータを保持しない。ノードは「次のノード」と「前のノード」へのポインタと、
+リストに追加されたデータの一部であるリストノードを含んでいる。
+これによりデータ構造が一般的になり、エントリのデータ型については気にしない。
 
-For example:
+例を示す。
 
 ```C
 struct nmi_desc {
@@ -35,13 +43,18 @@ struct nmi_desc {
 };
 ```
 
-Let's look at some examples to understand how `list_head` is used in the kernel. As I already wrote about, there are many, really many different places where lists are used in the kernel. Let's look for an example in miscellaneous character drivers. Misc character drivers API from the [drivers/char/misc.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/drivers/char/misc.c) is used for writing small drivers for handling simple hardware or virtual devices. Those drivers share same major number:
+`list_head` がカーネルでどのように使用されているのかを理解するために、いくつか例を見てみよう。
+前述したように、カーネル内でリストが使われている場所は非常に多い。
+試しに、miscキャラクタドライバを見てみよう。
+[drivers/char/misc.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/drivers/char/misc.c)のmiscキャラクタドライバのAPIは、
+シンプルなハードウェアや仮想デバイスをハンドリングする小さなドライバをを書くのに使用される。
+これらのドライバは、いくつかのメジャ番号を共有している。
 
 ```C
 #define MISC_MAJOR              10
 ```
 
-but have their own minor number. For example you can see it with:
+しかし、固有のマイナ番号も持っている。
 
 ```
 ls -l /dev |  grep 10
@@ -67,7 +80,7 @@ crw-------   1 root root     10,  63 Mar 21 12:01 vga_arbiter
 crw-------   1 root root     10, 137 Mar 21 12:01 vhci
 ```
 
-Now let's have a close look at how lists are used in the misc device drivers. First of all, let's look on `miscdevice` structure:
+それでは、miscデバイスドライバでリストがどのように使用されているのか見てみよう。まず、 `miscdevice` の構造体を見てみよう。
 
 ```C
 struct miscdevice
@@ -83,7 +96,8 @@ struct miscdevice
 };
 ```
 
-We can see the fourth field in the `miscdevice` structure - `list` which is a list of registered devices. In the beginning of the source code file we can see the definition of misc_list:
+`miscdevice` 構造体の4番目のフィールドに、 `list` があるのがわかる。これは、登録されたデバイスのリストだ。
+ソースコードの先頭に、misc_listの定義がある。
 
 ```C
 static LIST_HEAD(misc_list);
