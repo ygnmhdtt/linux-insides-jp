@@ -103,26 +103,27 @@ struct miscdevice
 static LIST_HEAD(misc_list);
 ```
 
-which expands to the definition of variables with `list_head` type:
+これは、 `list_head` 型で変数定義を拡張している。
 
 ```C
 #define LIST_HEAD(name) \
 	struct list_head name = LIST_HEAD_INIT(name)
 ```
 
-and initializes it with the `LIST_HEAD_INIT` macro, which sets previous and next entries with the address of variable - name:
+そして、 `LIST_HEAD_INIT` マクロでそれを初期化している。 name という変数のアドレスを使い、前と後のエントリーをセットしている。
 
 ```C
 #define LIST_HEAD_INIT(name) { &(name), &(name) }
 ```
 
-Now let's look on the `misc_register` function which registers a miscellaneous device. At the start it initializes `miscdevice->list` with the `INIT_LIST_HEAD` function:
+それでは、 `misc_register` という、いくつものデバイスを登録するい関数を見ていこう。
+はじめに、それは `miscdevice->list` を `INIT_LIST_HEAD` 関数で初期化している。
 
 ```C
 INIT_LIST_HEAD(&misc->list);
 ```
 
-which does the same as the `LIST_HEAD_INIT` macro:
+それは、`LIST_HEAD_INIT` マクロと同じことを行う。
 
 ```C
 static inline void INIT_LIST_HEAD(struct list_head *list)
@@ -132,13 +133,14 @@ static inline void INIT_LIST_HEAD(struct list_head *list)
 }
 ```
 
-In the next step after a device is created by the `device_create` function, we add it to the miscellaneous devices list with:
+次に、 `device_create` 関数でデバイスが作られた後、それを以下のように、デバイスリストに追加している。
 
 ```
 list_add(&misc->list, &misc_list);
 ```
 
-Kernel `list.h` provides this API for the addition of a new entry to the list. Let's look at its implementation:
+カーネルの `list.h` はこのようにリストへのエントリを追加するAPIを提供している。
+その実装を見てみよう。
 
 ```C
 static inline void list_add(struct list_head *new, struct list_head *head)
@@ -147,13 +149,13 @@ static inline void list_add(struct list_head *new, struct list_head *head)
 }
 ```
 
-It just calls internal function `__list_add` with the 3 given parameters:
+それは、3つのパラメータを `__list_add` 関数に渡しているだけだ。
 
-* new  - new entry.
-* head - list head after which the new item will be inserted.
-* head->next - next item after list head.
+* new  - 新しいエントリ
+* head - 新しい項目が挿入される前のリストの先頭
+* head->next - リストの先頭の次の要素
 
-Implementation of the `__list_add` is pretty simple:
+`__list_add` 関数の実装は非常にシンプルだ。
 
 ```C
 static inline void __list_add(struct list_head *new,
@@ -167,35 +169,40 @@ static inline void __list_add(struct list_head *new,
 }
 ```
 
-Here we add a new item between `prev` and `next`. So `misc` list which we defined at the start with the `LIST_HEAD_INIT` macro will contain previous and next pointers to the `miscdevice->list`.
+ここでは、 `prev` と `next` の間に新しい項目をリクエストする追加している。
+よって、 我々がはじめに `LIST_HEAD_INIT` マクロで定義した `misc` リストは `mscdevice->list` への前と後のポインタを持っている。
 
-There is still one question: how to get list's entry. There is a special macro:
+しかし、まだひとつ疑問が残る。
+どうやって、リストの要素を取得するのかだ。これには、特別なマクロがある。
 
 ```C
 #define list_entry(ptr, type, member) \
 	container_of(ptr, type, member)
 ```
 
-which gets three parameters:
+これは3つのパラメータを受け取る。
 
-* ptr - the structure list_head pointer;
-* type - structure type;
-* member - the name of the list_head within the structure;
+* ptr - list_head構造体のポインタ
+* type - 構造体の型
+* member - 構造体の中のlist_headの名前
 
-For example:
+例をあげよう。
 
 ```C
 const struct miscdevice *p = list_entry(v, struct miscdevice, list)
 ```
 
-After this we can access to any `miscdevice` field with `p->minor` or `p->name` and etc... Let's look on the `list_entry` implementation:
+これで、 `p->minor` や `p->name` などから `miscdevice` にアクセス可能になる。
+`list_entry` の実装を見てみよう。
+
 
 ```C
 #define list_entry(ptr, type, member) \
 	container_of(ptr, type, member)
 ```
 
-As we can see it just calls `container_of` macro with the same arguments. At first sight, the `container_of` looks strange:
+同じ引数で、 `container_of` マクロを呼んでいるだけだ。
+`container_of` は、初めて見ると奇妙に見えるかもしれない。
 
 ```C
 #define container_of(ptr, type, member) ({                      \
@@ -203,9 +210,10 @@ As we can see it just calls `container_of` macro with the same arguments. At fir
     (type *)( (char *)__mptr - offsetof(type,member) );})
 ```
 
-First of all you can note that it consists of two expressions in curly brackets. The compiler will evaluate the whole block in the curly braces and use the value of the last expression.
+まず最初に、{} の中に2つの式があることに注意しなければならない。
+コンパイラは{}野中のブロックを評価し、最後の式の値を使用する。
 
-For example:
+例えば、
 
 ```
 #include <stdio.h>
@@ -217,17 +225,21 @@ int main() {
 }
 ```
 
-will print `2`.
+は、 `2` を表示する。
 
-The next point is `typeof`, it's simple. As you can understand from its name, it just returns the type of the given variable. When I first saw the implementation of the `container_of` macro, the strangest thing I found was the zero in the `((type *)0)` expression. Actually this pointer magic calculates the offset of the given field from the address of the structure, but as we have `0` here, it will be just a zero offset along with the field width. Let's look at a simple example:
+次のポイントは `typeof` だ。
+名前からわかるように、それは与えられた変数の方を返却する。
+私が初めて `container_of` マクロの実装を見た時最も奇妙に思えたのは、 `((type *)0)` の部分だった。
+このポインタは魔法のように、構造体のアドレスから、与えられたフィールドへのオフセットを計算するのだが、
+ここでは `0` となっているため、それはそのまま与えられたフィールドになる。簡単な例を見てみよう。
 
 ```C
 #include <stdio.h>
 
 struct s {
-        int field1;
-        char field2;
-		char field3;
+  int field1;
+  char field2;
+  char field3;
 };
 
 int main() {
@@ -236,17 +248,23 @@ int main() {
 }
 ```
 
-will print `0x5`.
+上記は `0x5` を表示する。
 
-The next `offsetof` macro calculates offset from the beginning of the structure to the given structure's field. Its implementation is very similar to the previous code:
+次の `offsetof` マクロは、構造体の初めから、与えられたフィールドへのオフセットを計算する。
+その実装は、前のコードと非常に似ている。
 
 ```C
 #define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
 ```
 
-Let's summarize all about `container_of` macro. The `container_of` macro returns the address of the structure by the given address of the structure's field with `list_head` type, the name of the structure field with `list_head` type and type of the container structure. At the first line this macro declares the `__mptr` pointer which points to the field of the structure that `ptr` points to and assigns `ptr` to it. Now `ptr` and `__mptr` point to the same address. Technically we don't need this line but it's useful for type checking. The first line ensures that the given structure (`type` parameter) has a member called `member`. In the second line it calculates offset of the field from the structure with the `offsetof` macro and subtracts it from the structure address. That's all.
+`container_of` マクロについてまとめてみよう。
+`container_of` マクロは、 `list_head` 構造体のフィールドのアドレス、 `list_head` 構造体のフィールドの名前、コンテナ構造体の型を素に、構造体自体のアドレスを返却する。
+マクロの最初の行は `__mptr` を定義している。これは、 `ptr` 自体のポインタを持っている。
+今、 `ptr` と `__mptr` は同じアドレスを指している。
+厳密にはこの行は不要だが、型チェックに便利なのだ。最初の行は、与えられた構造体( `type` )が `member` と呼ばれるメンバを持っていることを確かめている。
+2行目で、 `offsetof` 膜とでフィールドへのオフセットを計算し、それを構造体の型アドレスから減算する。以上だ。
 
-Of course `list_add` and `list_entry` is not the only functions which `<linux/list.h>` provides. Implementation of the doubly linked list provides the following API:
+当然、`<linux/list.h>` には `list_add` と `list_entry` 以外の関数もある。双方向連結リストの実装は以下のAPIを提供している。
 
 * list_add
 * list_add_tail
@@ -260,4 +278,4 @@ Of course `list_add` and `list_entry` is not the only functions which `<linux/li
 * list_for_each
 * list_for_each_entry
 
-and many more.
+他にも多数。
