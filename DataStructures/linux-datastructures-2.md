@@ -1,10 +1,12 @@
-Data Structures in the Linux Kernel
+Linuxカーネルにおけるデータ構造
 ================================================================================
 
-Radix tree
+基数木(Radix tree)
 --------------------------------------------------------------------------------
 
-As you already know linux kernel provides many different libraries and functions which implement different data structures and algorithms. In this part we will consider one of these data structures - [Radix tree](http://en.wikipedia.org/wiki/Radix_tree). There are two files which are related to `radix tree` implementation and API in the linux kernel:
+すでに御存知の通り、Linuxカーネルは異なるデータ構造・アルゴリズムを実装した様々なライブラリや関数を提供している。
+この章では、これらのデータ構造の1つである[基数木](http://en.wikipedia.org/wiki/Radix_tree)について見ていこう。
+LinuxカーネルのAPIと基数木の実装に関連したファイルは2つある。
 
 * [include/linux/radix-tree.h](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/include/linux/radix-tree.h)
 * [lib/radix-tree.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/lib/radix-tree.c)
