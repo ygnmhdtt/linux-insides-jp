@@ -11,13 +11,13 @@ LinuxカーネルのAPIと基数木の実装に関連したファイルは2つ�
 * [include/linux/radix-tree.h](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/include/linux/radix-tree.h)
 * [lib/radix-tree.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/lib/radix-tree.c)
 
-Lets talk about what a `radix tree` is. Radix tree is a `compressed trie` where a [trie](http://en.wikipedia.org/wiki/Trie) is a data structure which implements an interface of an associative array and allows to store values as `key-value`. The keys are usually strings, but any data type can be used. A trie is different from an `n-tree` because of its nodes. Nodes of a trie do not store keys; instead, a node of a trie stores single character labels. The key which is related to a given node is derived by traversing from the root of the tree to this node. For example:
 `基数木` が何かについて説明しよう。
 `基数木` とは `圧縮されたトライ木` と言える。
 トライ木とは、連結された配列のインタフェースを実装し、key-value型の値を格納するデータ構造だ。
 keyはたいてい文字列だが、なにであっても構わない。
-トライ木と
-
+トライ木と `n-tree` との違いは、そのノードである。
+トライ木のノードは、キーを格納しない。代わりに、一文字のラベルを持っている。
+与えられたノードに関連するキーは、このノードへの木のルートにより与えられる。例をあげよう。
 
 ```
                +-----------+
